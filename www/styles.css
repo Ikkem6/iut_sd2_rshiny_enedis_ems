@@ -1,0 +1,235 @@
+/* CSS Map */
+
+/* Conteneur du filtre avec une taille dynamique */
+.filter-container {
+    background-color: rgba(255, 255, 255, 0.7); /* Blanc avec transparence */
+    padding: 50px;
+    overflow-x: auto; /* Gérer le débordement horizontal si nécessaire */
+    border-radius: 10px; /* Coins arrondis */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Ombre légère */
+    max-width: 100%; /* Assure que le conteneur ne dépasse pas la largeur de son parent */
+}
+
+/* Conteneur pour les sélecteurs */
+.select-input-container {
+    display: flex;
+    justify-content: center; /* Centre le contenu horizontalement */
+    margin-bottom: 20px; /* Ajoute un espace en bas */
+}
+
+/* Style global pour les conteneurs de KPI */
+.kpi-container {
+    display: flex;
+    flex-direction: row; /* Modifie la direction pour être horizontal */
+    justify-content: center; /* Centre les KPI horizontalement */
+    flex-wrap: wrap; /* Permet de passer à la ligne si nécessaire */
+    gap: 20px; /* Espacement entre les KPI */
+}
+
+/* Style des KPI */
+.kpi-box {
+    border-radius: 8px; /* Coins arrondis */
+    padding: 15px; /* Espacement interne */
+    text-align: center; /* Centrer le texte */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Légère ombre pour donner du relief */
+    position: relative; /* Position relative pour ajouter l'image avec ::before */
+    overflow: hidden; /* Pour éviter que l'image ne déborde */
+    color: white; /* Couleur du texte en blanc */
+    border: 4px solid; /* Épaisseur de la bordure */
+    flex: 1 1 250px; /* Permet aux KPI de s'ajuster dynamiquement */
+    max-width: 300px; /* Largeur maximale pour chaque KPI */
+}
+
+/* Styles spécifiques pour chaque KPI avec des couleurs de fond, images et bordures */
+.kpi-box.kpi-1 {
+    background-color: #0f5132; /* Couleur de fond verte pour le KPI 1 */
+    border-color: #1a733f; /* Couleur de la bordure verte */
+}
+
+.kpi-box.kpi-1::before {
+    content: "";
+    background-image: url('somme.png'); /* Image pour le KPI 1 */
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0.2; /* Opacité de l'image */
+    z-index: 1;
+}
+
+.kpi-box.kpi-2 {
+    background-color: #856404; /* Couleur de fond jaune/brun pour le KPI 2 */
+    border-color: #a67c04; /* Couleur de la bordure jaune/brun */
+}
+
+.kpi-box.kpi-2::before {
+    content: "";
+    background-image: url('maisonancien.png'); /* Image pour le KPI 2 */
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0.2; /* Opacité de l'image */
+    z-index: 1;
+}
+
+.kpi-box.kpi-3 {
+    background-color: #721c24; /* Couleur de fond rouge pour le KPI 3 */
+    border-color: #922932; /* Couleur de la bordure rouge */
+}
+
+.kpi-box.kpi-3::before {
+    content: "";
+    background-image: url('maisonneuf.png'); /* Image pour le KPI 3 */
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    opacity: 0.2; /* Opacité de l'image */
+    z-index: 1;
+}
+
+/* Pour que le texte soit par-dessus l'image */
+.kpi-box h5, .kpi-box h3 {
+    position: relative;
+    z-index: 2; /* Place le texte au-dessus de l'image */
+}
+
+/* Style du texte */
+.kpi-box h5 {
+    color: white; /* Couleur du titre */
+    font-weight: bold;
+}
+
+.kpi-box h3 {
+    color: white; /* Couleur des valeurs */
+    font-size: 24px; /* Taille des valeurs */
+    margin: 10px 0 0 0; /* Espacement autour des valeurs */
+}
+
+
+
+/* CSS Stat G */
+
+.statistics-container {
+    display: flex;
+    flex-wrap: wrap; /* Permet aux éléments de se déplacer sur plusieurs lignes */
+    gap: 10px; /* Espace entre les rectangles */
+    justify-content: center; /* Centre les rectangles horizontalement */
+}
+
+.statistic-box {
+    display: flex; /* Utiliser le modèle flex pour aligner l'image et le texte */
+    align-items: center; /* Centrer verticalement le contenu */
+    justify-content: center; /* Centre le texte horizontalement */
+    border-radius: 8px; /* Coins arrondis */
+    padding: 15px; /* Espacement interne */
+    color: white; /* Couleur du texte */
+    font-size: 16px; /* Taille de la police */
+    width: 30%; /* Ajustez la largeur à 30% pour permettre 3 éléments par ligne */
+    height: 80px; /* Hauteur fixe pour les rectangles */
+    min-width: 200px; /* Largeur minimum pour éviter les rectangles trop petits */
+    background-repeat: no-repeat; /* Empêche la répétition de l'image */
+    background-position: left center; /* Positionner l'image à gauche et centrée verticalement */
+    background-size: contain; /* Redimensionne l'image pour s'assurer qu'elle est entièrement visible */
+    box-sizing: border-box; /* Inclut le padding et la bordure dans la largeur et la hauteur */
+    flex-grow: 1; /* Permet aux rectangles de grandir pour remplir l'espace */
+}
+
+/* Couleurs et images de fond */
+.mean {
+    background-color: rgba(76, 175, 80, 0.8); /* Couleur pour la moyenne avec transparence */
+    background-image: url('moy.png'); /* Image de fond pour la moyenne */
+    margin-top: 50px; /* Espace au-dessus du rectangle de la moyenne */
+}
+
+.median {
+    background-color: rgba(33, 150, 243, 0.8); /* Couleur pour la médiane avec transparence */
+    background-image: url('median.png'); /* Image de fond pour la médiane */
+        margin-top: 50px; /* Espace au-dessus du rectangle de la moyenne */
+
+}
+
+.variance {
+    background-color: rgba(255, 152, 0, 0.8); /* Couleur pour la variance avec transparence */
+    background-image: url('var.png'); /* Image de fond pour la variance */
+        margin-top: 50px; /* Espace au-dessus du rectangle de la moyenne */
+
+}
+
+.std-dev {
+    background-color: rgba(244, 67, 54, 0.8); /* Couleur pour l'écart-type avec transparence */
+    background-image: url('sd.png'); /* Image de fond pour l'écart-type */
+}
+
+.q1 {
+    background-color: rgba(156, 39, 176, 0.8); /* Couleur pour le 1er quartile avec transparence */
+    background-image: url('1st.png'); /* Image de fond pour le 1er quartile */
+}
+
+.q3 {
+    background-color: rgba(255, 87, 34, 0.8); /* Couleur pour le 3e quartile avec transparence */
+    background-image: url('3rd.png'); /* Image de fond pour le 3e quartile */
+}
+
+
+/*Tableaux pour map et reg-lin*/
+
+table {
+    width: 100%; /* Assurez-vous que le tableau prend toute la largeur */
+    border-collapse: collapse; /* Fusionne les bordures */
+    margin-top: 20px; /* Espace au-dessus des tableaux */
+    margin-left: auto; /* Centre le tableau horizontalement */
+    margin-right: auto; /* Centre le tableau horizontalement */
+}
+
+.table th, .table td {
+    border: 1px solid #dddddd; /* Bordure autour des cellules */
+    text-align: left; /* Alignement à gauche du texte */
+    padding: 8px; /* Espace intérieur des cellules */
+}
+
+.table th {
+    background-color: #ff4800; /* Couleur d'arrière-plan des en-têtes */
+    color: white; /* Couleur du texte des en-têtes */
+    font-weight: bold; /* Texte en gras pour les en-têtes */
+}
+
+.table tr:nth-child(even) {
+    background-color: #f2f2f2; /* Couleur de fond pour les lignes paires */
+}
+
+.table tr:hover {
+    background-color: #ddd; /* Couleur de fond au survol des lignes */
+}
+
+/* Style pour les titres des sections */
+h3 {
+    margin-top: 20px; /* Espace au-dessus des titres */
+    color: #333; /* Couleur du texte */
+    text-align: center; /* Centrer les titres */
+}
+
+/* Centre le tableau avec le titre */
+.centered-table {
+    margin-left: auto; /* Centre le tableau horizontalement */
+    margin-right: auto; /* Centre le tableau horizontalement */
+}
+
+
+
+
+
+

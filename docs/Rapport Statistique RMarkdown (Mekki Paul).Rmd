@@ -1,0 +1,682 @@
+---
+title: "Rapport statistique sur l'impact Diagnostic de Performance Energétique dans
+  le département du Rhône (69) de 2021 à aujourd'hui"
+author: "Mekki COPRAK / Paul BLEIN"
+date: "2024-10-13"
+output: html_document
+runtime: shiny
+---
+
+# Introduction au contexte de l'étude
+
+<br/>
+
+Le changement climatique et la hausse des prix de l'énergie met la sobriété énergétique au coeur de la préoccupation de la population française, c'est-à-dire la réduction de la consommation d'énergie sans pour autant réduire la qualité ou le confort de l'individu. 
+
+Pour favoriser cette pratique pouvant limiter les effets et les enjeux du réchauffement climatique en France, GreenTech Solutions vous propose une étude statistique comportant des analyses et des chiffres clés sur l'un des leviers de réduction des gaz à effets de serre : l'amélioration de la performance énergétique des bâtiments. 
+
+Pour cela, un grand nombre de logements sont évalué énergitiquement selon le Diagnostic de Performance Energétique (DPE) qui est une méthode d'évaluation de la performance énergétique et climatique d'un bâtiment selon une étiquette pouvant aller de A à G donnant sa consommation d'énergie et son impact en ce qui concerne les émission de Gaz à Effet de Serre (GES) permettant d'identifier les passoires énergétiques, dont leur mise en location seront progressivement interdite, ainsi qu'informer les locataires sur la valeur verte de leurs logements et par la suite leur recommander de possibles travaux dans une visée d'amélioration climatique, en plus de leur permettre une baisse des charges énergétiques. 
+
+L'objectif principal de cette étude est donc de quantifier de 2021 à 2024, l'impact d'une passage d'une classe DPE à une autre en termes de consommation et de charges énergétiques dans le but de motiver les décision de rénovations à la population, en montrant par exemple les potentiels gains sur ses factures énergétiques ou encore leur impact en GES sur l'environnement.
+
+Notre étude se basera donc sur un département national précis que notre entreprise a eu la chance d'y obtenir les données nécessaires pour la rédaction de notre rapport. Il s'agira donc du département du Rhône (69).
+
+Tout les chiffres, analyses et visualisation statistiques seront effectués à l'aide du language informatique R et de ses libraries.
+
+
+<br/>
+
+
+```{r warning=FALSE, include=FALSE}
+
+setwd(dir="C:/Users/mekki/Desktop")
+do = read.csv("DonnesNeufsAnciens.csv",header=TRUE,sep=",",dec=".")
+
+```
+
+
+```{r include=FALSE}
+
+library(httr)
+library(readr)
+library(dplyr)
+library(jsonlite)
+library(sf)
+library(kableExtra)
+library(knitr)
+library(ggplot2)
+library(ggrepel)
+library(gridExtra)
+library(corrplot)
+
+```
+
+# Chiffres clés
+Commençons tout d'abord par présenter quelques chiffres clés statistiques assez importants que nous avons pu obtenir selon les données qui nous a été mis a disposition.
+
+<br/>
+
+Nombre total d'habitations dans le département 69 pris en compte dans l'étude :
+
+```{r echo=FALSE}
+nb_total = nrow(do)
+
+print(paste("Nombre total d'habitations étudiés :",nb_total))
+
+```
+<br/>
+
+Nombre total d'habitations anciennes dans le Rhône en 2024 :
+
+<br/>
+
+```{r echo=FALSE}
+nb_total_ancien = nrow(subset(do,do$Type_hab=="ancien"))
+
+print(paste("Nombre total d'habitations étudiés :",nb_total_ancien))
+```
+<br/>
+
+Il y a donc, selon ce code R, au total, 205097 habitations anciennes dans le département du Rhône.
+
+<br/>
+
+Nombre total d'habitations neuves dans le Rhône en 2024 :
+
+```{r echo=FALSE}
+nb_total_neuf = nrow(subset(do,do$Type_hab=="neuf"))
+
+print(paste("Nombre total d'habitations étudiés :",nb_total_neuf))
+```
+<br/>
+
+Il y a donc, selon ce code R, au total, 33244 habitations anciennes dans le département 69.
+
+<br/>
+
+```{r echo=FALSE}
+
+  
+# UI pour les filtres
+inputPanel(
+  selectInput("Filtre_codep1", label = "Filtrer par code postal :", 
+              choices = c("Tous les codes postaux", unique(as.character(do$`Code_postal_(BAN)`))), 
+              selected = "69200", 
+              multiple = FALSE),
+  
+  selectInput("Filtre_typeh1", label = "Filtrer par type de logement :", 
+              choices = c("Tous les types de logements", unique(as.character(do$Type_hab))), 
+              selected = "ancien", 
+              multiple = FALSE),
+  
+  # Bouton pour changer l'affichage
+  actionButton("changer_tableau", "Afficher la répartition GES")
+)
+
+
+
+```
+
+
+
+```{r echo=FALSE}
+
+# Variable pour suivre le type d'étiquette
+valeur_etiquette <- reactiveVal("DPE")  # Par défaut, commence avec DPE
+
+# Créer une sortie pour le tableau
+output$table_dpe <- renderTable({
+  
+  # Obtenez les valeurs sélectionnées
+  code_postal_selectionne <- input$Filtre_codep1
+  type_habitation_selectionne <- input$Filtre_typeh1
+  
+  # Filtrer le data frame selon les sélections
+  do_filtre <- do
+  
+  # Appliquer le filtre par code postal
+  if (code_postal_selectionne != "Tous les codes postaux") {
+    do_filtre <- do_filtre[do_filtre$`Code_postal_(BAN)` == code_postal_selectionne, ]
+  }
+  
+  # Appliquer le filtre par type de logement
+  if (type_habitation_selectionne != "Tous les types de logements") {
+    do_filtre <- do_filtre[do_filtre$Type_hab == type_habitation_selectionne, ]
+  }
+  
+  # Créer un tableau de fréquences selon le type d'étiquette
+  if (valeur_etiquette() == "DPE") {
+    table_etiquette = table(do_filtre$Etiquette_DPE)
+  } else {
+    table_etiquette = table(do_filtre$Etiquette_GES)
+  }
+  
+  # Convertir le tableau en data frame
+  table_etiquette_df = as.data.frame(table_etiquette)
+  
+  # Renommer les colonnes pour plus de clarté
+  colnames(table_etiquette_df) = c("Étiquette", "Répartition")
+  
+  # Afficher le tableau de manière basique
+  return(table_etiquette_df)
+})
+
+# Observer pour changer la valeur de l'étiquette
+observeEvent(input$changer_tableau, {
+  if (valeur_etiquette() == "DPE") {
+    valeur_etiquette("GES")
+    updateActionButton(inputId = "changer_tableau", label = "Afficher la répartition DPE")
+  } else {
+    valeur_etiquette("DPE")
+    updateActionButton(inputId = "changer_tableau", label = "Afficher la répartition GES")
+  }
+})
+
+
+```
+
+
+```{r echo=FALSE}
+
+# Afficher le tableau centré
+div(style = "display: flex; justify-content: center;", 
+    tableOutput("table_dpe"))
+
+
+```
+
+
+Depuis 2021, on compabilise 5172 bâtiments d'étiquette A, 10447 de logements d'étiquette B, 87745 d'habitation de classe C, 68848 d'étiquette E, 14538 étiquette F et 9086 d'étiquette de classe G. 
+
+On remarque, par ordre, qu'une très grosse partie des logements du département du 69 sont de classe C, suivi de l'étiquette D et de l'étiquette E. On y trouve très peu en classe A, G ou encore en B.
+
+De l'année 2021 jusqu'à aujourd'hui, on compte 31227 de logements en étiquette GES A, ensuite 48973 bâtiments de classe GES B, 90769 d'habitations en classe GES C, 42311 étiquettes D, 16945 étiquettes E, 6180 de bâtiments de classe F et 1936 en étiquette G.
+
+On voit clairement qu'une très grande partie des logements dans le Rhône sont en étiquettes GES C, ensuite en étiquette GES B puis en classe D. A l'inverse, très peu sont en classe et F, et une petite partie en étiquette E.
+
+
+
+
+
+
+
+
+
+
+
+# Comparaison entre les logements anciens et neufs
+
+
+```{r echo=FALSE}
+inputPanel(
+  selectInput("Filtre_codep2", label = "Filtrer par code postal :", 
+              choices = c("Tous les codes postaux", unique(do$`Code_postal_(BAN)`)), 
+              selected = "69200", multiple = FALSE),
+  
+  selectInput("Filtre_variable", label = "Choisir la variable à comparer :", 
+              choices = c("Étiquettes DPE", "Étiquettes GES", "Type d'habitations"), 
+              selected = "Étiquettes DPE", multiple = FALSE)
+)
+
+```
+
+
+```{r echo=FALSE}
+output$diagrams <- renderPlot({
+  
+  # Filtrer les données selon le code postal sélectionné
+  do_filtre <- if (input$Filtre_codep2 == "Tous les codes postaux") {
+    do
+  } else {
+    do %>% filter(`Code_postal_(BAN)` == input$Filtre_codep2)
+  }
+  
+  # Ajuster la mise en page pour les diagrammes
+  par(mfrow = c(1, 2))  # 1 ligne, 2 colonnes
+  
+  # Créer les diagrammes en fonction de la variable sélectionnée
+  if (input$Filtre_variable == "Étiquettes DPE") {
+    
+    # Données pour les bâtiments anciens
+    pie_data_ancien <- do_filtre %>%
+      filter(Type_hab == "ancien") %>%
+      count(Etiquette_DPE) %>%
+      mutate(percentage = n / sum(n) * 100)
+    
+    # Diagramme circulaire pour les bâtiments anciens
+    pie(pie_data_ancien$n, 
+        labels = NA,  
+        col = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"),
+        main = "Proportion d'étiquette DPE (Anciens)")
+    
+    # Ajouter les labels à l'extérieur
+    legend("topright", 
+           legend = paste0(substr(pie_data_ancien$Etiquette_DPE, 1, 1), ": ", round(pie_data_ancien$percentage, 2), "%"), 
+           fill = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"), 
+           cex = 0.7)  
+    
+    # Données pour les bâtiments neufs
+    pie_data_neuf <- do_filtre %>%
+      filter(Type_hab == "neuf") %>%
+      count(Etiquette_DPE) %>%
+      mutate(percentage = n / sum(n) * 100)
+    
+    # Diagramme circulaire pour les bâtiments neufs
+    pie(pie_data_neuf$n, 
+        labels = NA,  
+        col = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"),
+        main = "Proportion d'étiquette DPE (Neufs)")
+    
+    # Ajouter les labels à l'extérieur
+    legend("topright", 
+           legend = paste0(substr(pie_data_neuf$Etiquette_DPE, 1, 1), ": ", round(pie_data_neuf$percentage, 2), "%"), 
+           fill = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"), 
+           cex = 0.7)  
+    
+  } else if (input$Filtre_variable == "Étiquettes GES") {
+    
+    # Données pour les bâtiments anciens
+    pie_data_ancien <- do_filtre %>%
+      filter(Type_hab == "ancien") %>%
+      count(Etiquette_GES) %>%
+      mutate(percentage = n / sum(n) * 100)
+    
+    # Diagramme circulaire pour les bâtiments anciens
+    pie(pie_data_ancien$n, 
+        labels = NA,  
+        col = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"),
+        main = "Proportion d'étiquette GES (Anciens)")
+    
+    # Ajouter les labels à l'extérieur
+    legend("topright", 
+           legend = paste0(substr(pie_data_ancien$Etiquette_GES, 1, 1), ": ", round(pie_data_ancien$percentage, 2), "%"), 
+           fill = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"), 
+           cex = 0.7)  
+    
+    # Données pour les bâtiments neufs
+    pie_data_neuf <- do_filtre %>%
+      filter(Type_hab == "neuf") %>%
+      count(Etiquette_GES) %>%
+      mutate(percentage = n / sum(n) * 100)
+    
+    # Diagramme circulaire pour les bâtiments neufs
+    pie(pie_data_neuf$n, 
+        labels = NA,  
+        col = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"),
+        main = "Proportion d'étiquette GES (Neufs)")
+    
+    # Ajouter les labels à l'extérieur
+    legend("topright", 
+           legend = paste0(substr(pie_data_neuf$Etiquette_GES, 1, 1), ": ", round(pie_data_neuf$percentage, 2), "%"), 
+           fill = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"), 
+           cex = 0.7)  
+    
+  } else if (input$Filtre_variable == "Type d'habitations") {
+    
+    # Données pour les bâtiments anciens
+    pie_data_ancien <- do_filtre %>%
+      filter(Type_hab == "ancien") %>%
+      count(Type_bâtiment) %>%
+      mutate(percentage = n / sum(n) * 100)
+    
+    # Diagramme circulaire pour les bâtiments anciens
+    pie(pie_data_ancien$n, 
+        labels = NA,  
+        col = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"),
+        main = "Proportion par type de bâtiment (Anciens)")
+    
+    # Ajouter les labels à l'extérieur
+    legend("topright", 
+           legend = paste0(substr(pie_data_ancien$Type_bâtiment, 1, 1), ": ", round(pie_data_ancien$percentage, 2), "%"), 
+           fill = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"), 
+           cex = 0.7)  
+    
+    # Données pour les bâtiments neufs
+    pie_data_neuf <- do_filtre %>%
+      filter(Type_hab == "neuf") %>%
+      count(Type_bâtiment) %>%
+      mutate(percentage = n / sum(n) * 100)
+    
+    # Diagramme circulaire pour les bâtiments neufs
+    pie(pie_data_neuf$n, 
+        labels = NA,  
+        col = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"),
+        main = "Proportion par type de bâtiment (Neufs)")
+    
+    # Ajouter les labels à l'extérieur
+    legend("topright", 
+           legend = paste0(substr(pie_data_neuf$Type_bâtiment, 1, 1), ": ", round(pie_data_neuf$percentage, 2), "%"), 
+           fill = c("darkgreen", "green", "lightgreen", "yellow", "orange", "darkorange", "red"), 
+           cex = 0.7)  
+  }
+})
+
+
+
+
+```
+
+
+```{r echo=FALSE}
+plotOutput("diagrams")
+```
+
+
+On mesure chez les habitations anciennes 85.5% d'appartement, 13% de maison et 1.5% d'immeubles.
+Chez les logements neuves, il y a environ 85.2% d'appartement, 12.8% de maison et seulement 2% d'immeubles.
+On y remarque des proportion quasi-semblable entre les bâtiments anciennes et neuves en termes de type d'habitation.
+
+
+Selon les proportions qui ont été relevées, seulement 0.21% des habitations anciennes sont d'étiquette DPE A, 1.89% en étiquette DPE B, 32,2% en classe C, 33.47% en classe D, 20.71% en étiquette E, 7.09% en étiquette F et 4.43% en classe G.
+Pour les logements neuves, on obtient 14.27% bâtiments d'étiquette DPE A, 19.77% en étiquette B, 65.26% en étiquette C, 0.6% en classe D, 0.09% en classe E, 0.01 en étiquette F et G.
+Chez les anciennes habitations on voit que plus de la moitié sont en étiquette C, D et E alors que de l'autre côté chez les logments neuves, ils se situent plutôt en étiquette A, B et C.
+
+
+D'après ces diagrammes circulaires, on voit que les anciens bâtiements contabilisent environ 11.48% d'étiquette GES A, 21.57% d'étiquette GES B, 34.15% de classe C, environ 20.58% d'étiquette D, 8.26% d'étiquette GES E, 3.01% en F et 0.94% en G.
+Les logements neuves eux, sont réprésentés par 23.12% de logements en étiquette GES A, 14.24 en classe B, 62.35% en classe C, 0.29% en étiquette GES D et seulement 0.003% en étiquette G et aucun en étiquette GES F.
+En termes d'étiquettes GES, les anciennes habitations sont généralement en étiquette B, C et D alors que les neuves se situent dans les étiquettes A, B et C.
+
+
+
+
+
+
+
+
+
+
+
+# Analyses descriptives
+
+```{r echo=FALSE}
+# Interface utilisateur pour les filtres
+inputPanel(
+  selectInput("Filtre_codep3", label = "Filtrer par code postal :", 
+              choices = c("Tous les codes postaux", unique(as.character(do$`Code_postal_(BAN)`))), 
+              selected = "69200", 
+              multiple = FALSE),
+  
+  selectInput("Filtre_typeh3", label = "Filtrer par type de logement :", 
+              choices = c("Tous les types de logements", unique(as.character(do$Type_hab))), 
+              selected = "ancien", 
+              multiple = FALSE),
+  
+  selectInput("variable_x", label = "Choisir la variable X :", 
+              choices = c("Conso chauffage finale" = "Conso_chauffage_é_finale", 
+                          "Conso refroidissement finale" = "Conso_refroidissement_é_finale", 
+                          "Conso éclairage finale" = "Conso_éclairage_é_finale", 
+                          "Conso ECS finale" = "Conso_ECS_é_finale", 
+                          "Conso 5 usages finale" = "Conso_5_usages_é_finale", 
+                          "Coût chauffage" = "Coût_chauffage", 
+                          "Coût refroidissement" = "Coût_refroidissement", 
+                          "Coût éclairage" = "Coût_éclairage", 
+                          "Coût ECS" = "Coût_ECS", 
+                          "Coût total 5 usages" = "Coût_total_5_usages"), 
+              selected = "Conso_chauffage_é_finale", 
+              multiple = FALSE),
+  
+  sliderInput("valeur_s", label = "Plage de valeurs à afficher :", 
+              min = 0, max = 50000, value = c(0, 50000))  # Ajustez min et max selon les données
+)
+
+```
+
+```{r echo=FALSE}
+# Réactive le filtrage et les graphiques
+filtered_data <- reactive({
+  do %>%
+    filter(
+      (`Code_postal_(BAN)` == input$Filtre_codep3 | input$Filtre_codep3 == "Tous les codes postaux") & 
+      (Type_hab == input$Filtre_typeh3 | input$Filtre_typeh3 == "Tous les types de logements") &
+      (get(input$variable_x) >= input$valeur_s[1] & get(input$variable_x) <= input$valeur_s[2])
+    )
+})
+
+# Calculez les statistiques descriptives
+stats <- reactive({
+  filtered_data() %>%
+    summarise(
+      moyenne = mean(get(input$variable_x), na.rm = TRUE),
+      médiane = median(get(input$variable_x), na.rm = TRUE),
+      variance = var(get(input$variable_x), na.rm = TRUE),
+      écart_type = sd(get(input$variable_x), na.rm = TRUE),
+      premier_quartile = quantile(get(input$variable_x), 0.25, na.rm = TRUE),
+      troisième_quartile = quantile(get(input$variable_x), 0.75, na.rm = TRUE)
+    )
+})
+
+# Création des plots
+output$histogram <- renderPlot({
+  ggplot(filtered_data(), aes_string(x = input$variable_x)) +
+    geom_histogram(binwidth = 100, fill = "blue", alpha = 0.7) +
+    labs(title = "Histogramme de la variable X", x = input$variable_x, y = "Fréquence") +
+    theme_minimal()
+})
+
+output$boxplot <- renderPlot({
+  ggplot(filtered_data(), aes_string(y = input$variable_x)) +
+    geom_boxplot(fill = "orange", alpha = 0.7) +
+    labs(title = "Boxplot de la variable X", y = input$variable_x) +
+    theme_minimal()
+})
+
+output$stats <- renderPrint({
+  stats()
+})
+
+# Affichage dans l'interface
+fluidRow(
+  column(6, plotOutput("histogram")),
+  column(6, plotOutput("boxplot")),
+  column(12, 
+         h4("Statistiques Descriptives"),  # Titre pour les statistiques
+         div(style = "text-align: center;", verbatimTextOutput("stats")),  # Centre les statistiques
+  )
+)
+
+```
+
+
+On voit que les énergies les plus consommées sont au peu près les mêmes entre les logements anciens et neufs mais la différence se voit sur les coûts et la consommation qui sont nettement plus élevés chez les bâtiments anciens plutôt que les bâtiments neufs.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Analyses comparatif 
+
+
+```{r echo=FALSE}
+# Interface utilisateur
+inputPanel(
+  selectInput("Filtre_codep1", label = "Filtrer par code postal :", 
+              choices = c("Tous les codes postaux", unique(as.character(do$Code_postal_))), 
+              selected = "69200", 
+              multiple = FALSE),
+  
+  selectInput("variable_x2", label = "Choisir la variable X :", 
+              choices = c("Etiquette_DPE", "Etiquette_GES"), 
+              selected = "Etiquette_DPE", 
+              multiple = FALSE),
+  
+  selectInput("variable_y2", label = "Choisir la variable Y :", 
+              choices = c("Conso chauffage finale" = "Conso_chauffage_é_finale", 
+                          "Conso refroidissement finale" = "Conso_refroidissement_é_finale", 
+                          "Conso éclairage finale" = "Conso_éclairage_é_finale", 
+                          "Conso ECS finale" = "Conso_ECS_é_finale", 
+                          "Conso 5 usages finale" = "Conso_5_usages_é_finale", 
+                          "Coût chauffage" = "Coût_chauffage", 
+                          "Coût refroidissement" = "Coût_refroidissement", 
+                          "Coût éclairage" = "Coût_éclairage", 
+                          "Coût ECS" = "Coût_ECS", 
+                          "Coût total 5 usages" = "Coût_total_5_usages"), 
+              selected = "Conso_chauffage_é_finale", 
+              multiple = FALSE)
+)
+
+
+```
+
+
+```{r echo=FALSE}
+
+# Écoute des changements dans les sélections
+output$Plots2 <- renderPlot({
+  # Obtenir les valeurs sélectionnées
+  code_postal_selected <- input$Filtre_codep1
+  variable_x <- input$variable_x2
+  variable_y <- input$variable_y2
+  
+  # Filtrer les données selon le code postal choisi
+  if (code_postal_selected != "Tous les codes postaux") {
+    filtered_data <- do[do$Code_postal_ == code_postal_selected, ]
+  } else {
+    filtered_data <- do
+  }
+  
+  # Filtrer les données pour les habitations anciennes et neuves
+  data_ancien <- filtered_data[filtered_data$Type_hab == "ancien", ]
+  data_neuf <- filtered_data[filtered_data$Type_hab == "neuf", ]
+
+  # Création des histogrammes
+  histogram_ancien <- ggplot(data_ancien, aes_string(x = variable_x, y = variable_y)) +
+    geom_histogram(stat = "identity", fill = "blue", alpha = 0.7) +
+    labs(title = "Histogramme des habitations anciennes", x = variable_x, y = variable_y)
+
+  histogram_neuf <- ggplot(data_neuf, aes_string(x = variable_x, y = variable_y)) +
+    geom_histogram(stat = "identity", fill = "green", alpha = 0.7) +
+    labs(title = "Histogramme des habitations neuves", x = variable_x, y = variable_y)
+
+  # Affichage des histogrammes côte à côte
+  gridExtra::grid.arrange(histogram_neuf, histogram_ancien, ncol = 2)
+})
+
+
+```
+
+```{r echo=FALSE}
+
+plotOutput("Plots2")
+
+```
+
+
+
+On voit que la classe C concernant les étiquettes DPE et GES représente beaucoup les consommation et les coûts énergétiques et que les logements neufs se trouvent bel et biens entre l'étiquette DPE et GES A,B et C alors qu'à l'inverse les logements anciens se trouvement généralement dans les classes C, D et E.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Corrélations entre les variables 
+
+```{r echo=FALSE}
+
+# Interface utilisateur
+inputPanel(
+  selectInput("Filtre_codep5", label = "Filtrer par code postal :", 
+              choices = c("Tous les codes postaux", unique(as.character(do$`Code_postal_(BAN)`))), 
+              selected = "69200", 
+              multiple = FALSE),
+  
+  selectInput("Filtre_typeh5", label = "Filtrer par type de logement :", 
+              choices = c("Tous les types de logements", unique(as.character(do$Type_hab))), 
+              selected = "ancien", 
+              multiple = FALSE),
+  
+  actionButton("update", "Mettre en place le corrplot")  # Bouton pour mettre à jour le plot
+)
+
+
+
+```
+
+
+```{r corrplot_output, echo=FALSE}
+# Affichage du corrplot
+output$corrplot <- renderPlot({
+  req(input$update)  # Attendre que l'utilisateur clique sur le bouton
+
+  # Filtrer les données selon les choix de l'utilisateur
+  filtered_data <- reactive({
+    data <- do
+    
+    # Filtrer par code postal
+    if (input$Filtre_codep1 != "Tous les codes postaux") {
+      data <- data[data$`Code_postal_(BAN)` == input$Filtre_codep5, ]
+    }
+    
+    # Filtrer par type de logement
+    if (input$Filtre_typeh1 != "Tous les types de logements") {
+      data <- data[data$Type_hab == input$Filtre_typeh5, ]
+    }
+    
+    return(data)
+  })()
+  
+  # Vérifier qu'il y a suffisamment de données
+  if (nrow(filtered_data) < 2) {
+    plot.new()  # Ne rien afficher si pas assez de données
+    text(0.5, 0.5, "Pas assez de données pour calculer la corrélation", cex = 1.5)
+    return()
+  }
+  
+  # Calculer la matrice de corrélation
+  cor_matrix <- cor(filtered_data[, c("Conso_chauffage_é_finale", 
+                                       "Conso_refroidissement_é_finale", 
+                                       "Conso_éclairage_é_finale", 
+                                       "Conso_ECS_é_finale", 
+                                       "Conso_5_usages_é_finale", 
+                                       "Coût_chauffage", 
+                                       "Coût_refroidissement", 
+                                       "Coût_éclairage", 
+                                       "Coût_ECS", 
+                                       "Coût_total_5_usages")], use = "complete.obs")
+  
+  # Créer le corrplot
+  corrplot(cor_matrix, 
+           method = "color", 
+           col = colorRampPalette(c("blue", "white", "red"))(200), 
+           type = "full", 
+           addCoef.col = "black", 
+           number.cex = 0.7, 
+           tl.col = "black", 
+           tl.srt = 45,
+           title = "Matrice de Corrélation",
+           mar = c(0, 0, 1, 0))
+})
+
+```
+
+
+```{r echo=FALSE}
+plotOutput("corrplot")
+
+```
+
+
+
+On remarque que les coûts sont bel et bien liées à la consommation que ce soit chez les logements anciens et neufs.
+
+
